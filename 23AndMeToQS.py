@@ -10,6 +10,7 @@ import re
 
 raw = sys.argv[1]  # users raw 23AndMe download
 snps = sys.argv[2]  # the snps in question
+name = sys.argv[3] # the sample ID to assign 
 
 # assets for the quantstudio file
 header = """
@@ -31,7 +32,7 @@ header = """
 																										
 																										
 Assay Name	Assay ID	Gene Symbol	NCBI SNP Reference	Sample ID	Call	Manual	Quality	VIC(Rn)	FAM(Rn)	ROX	Task	Gender	Population	Well	Experiment Name	Plate Barcode	Annotation	Low ROX Intensity	NTC FAM Intensity High	NTC VIC Intensity High	Genotype Quality Low	Failed Control	Reference Sample Discordance	Replicate Sample Discordance	Chromosome #	Position
-         """
+"""
 snp_line = [
     "C_25625804D_20",
     "C_25625804D_20",
@@ -186,10 +187,10 @@ def edges(raws):
         if key == "rs35599367":  # an rsid not seen in this version of 23AndMe
             if value == "UND":
                 continue  # dont really need to do anything for now
-        if key == "rs1799963":  # an rsid not seen in this version of 23AndMe
+        if key == "rs1799963":  # an rsid not seen in this version of 23AndMe, this is actually almost fixed so maybe we can assign it anyways
             if value == "UND":
                 continue  # dont really need to do anything for now
-        if key == "rs5030862":  # an rsid not seen in this version of 23AndMe
+        if key == "rs5030862":  # an rsid not seen in this version of 23AndMe, probably could be fixed as T though due to freqs. UND for now because can't get CNV for CYP2D6 anyways.
             if value == "UND":
                 continue
         if key == "rs41303343":  # an insertion event
@@ -226,10 +227,17 @@ def edges(raws):
             elif value == "D/I":
                 value = "-/A"
             elif value == "D/D":
-                value = "-/-"  # convert the results to the quant studio format
-        
+                value = "-/-"  
+        outDict[key] = value
+    return outDict
+
+
+# convert the results to the quant studio format    
 def convert(edged):
-    pass
+    outsnps = header
+    for key,value in edged.items():
+        line = snp_line
+        
 
 
 if __name__ == "__main__":
@@ -237,3 +245,6 @@ if __name__ == "__main__":
     raw_results = search(searcher, snps)
     print(raw_results)
     edged = edges(raw_results)
+    print(edged)
+    snp_write = convert(edged)
+    
