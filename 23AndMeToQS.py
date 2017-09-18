@@ -10,7 +10,20 @@ import re
 
 raw = sys.argv[1]  # users raw 23AndMe download
 snps = sys.argv[2]  # the snps in question
-name = sys.argv[3] # the sample ID to assign 
+gene_table = sys.argv[3] # an index of gene-rsid relations
+name = sys.argv[4] # the sample ID to assign 
+
+
+#load genes into a dict
+def load_genes(g):
+    outDict = {}
+    with open(g) as  file:
+        for line in file:
+            line = line.strip()
+            temp = line.split('\t')
+            outDict[temp[1]] = temp[0]
+    return outDict
+
 
 # assets for the quantstudio file
 header = """
@@ -175,24 +188,13 @@ def search(search, seek):
 # resolve edge cases
 def edges(raws):
     outDict = {}
+    outDict["rs2069514"] = "UND" # an rsid not seen in this version of 23AndMe
+    outDict["rs35694136"] = "UND" # an rsid not seen in this version of 23AndMe
+    outDict["rs35599367"] = "UND" # an rsid not seen in this version of 23AndMe
+    outDict["rs1799963"] = "UND" # an rsid not seen in this version of 23AndMe, this is actually almost fixed so maybe we can assign it anyways
+    outDict["rs5030862"] = "UND" # an rsid not seen in this version of 23AndMe, probably could be fixed as T though due to freqs. UND for now because can't get CNV for CYP2D6 anyways.
+    
     for key, value in raws.items():
-        
-        #really need to work on imputation via other SNPs for these
-        if key == "rs2069514":  # an rsid not seen in this version of 23AndMe
-            if value == "UND":
-                continue  # dont really need to do anything for now
-        if key == "rs35694136":  # an rsid not seen in this version of 23AndMe
-            if value == "UND":
-                continue  # dont really need to do anything for now
-        if key == "rs35599367":  # an rsid not seen in this version of 23AndMe
-            if value == "UND":
-                continue  # dont really need to do anything for now
-        if key == "rs1799963":  # an rsid not seen in this version of 23AndMe, this is actually almost fixed so maybe we can assign it anyways
-            if value == "UND":
-                continue  # dont really need to do anything for now
-        if key == "rs5030862":  # an rsid not seen in this version of 23AndMe, probably could be fixed as T though due to freqs. UND for now because can't get CNV for CYP2D6 anyways.
-            if value == "UND":
-                continue
         if key == "rs41303343":  # an insertion event
             if value == "I/I":
                 value = "T/T"
@@ -233,18 +235,30 @@ def edges(raws):
 
 
 # convert the results to the quant studio format    
-def convert(edged):
+def convert(edged,genes):
     outsnps = header
     for key,value in edged.items():
         line = snp_line
+        line[2] = genes[key]
+        line[3] = key
+        line[4] = name
+        line[5] = value
+        outline = '\t'.join(line)
+        outsnps += outline+"\n"
+    outsnps += tail
+    return outsnps
         
 
 
 if __name__ == "__main__":
+    genes = load_genes(gene_table)
     searcher = build(raw)
     raw_results = search(searcher, snps)
     print(raw_results)
     edged = edges(raw_results)
     print(edged)
-    snp_write = convert(edged)
+    snp_write = convert(edged,genes)
+    outfile = open(name+".snps.txt",'w')
+    outfile.write(snp_write)
+    
     
