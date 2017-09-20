@@ -1,6 +1,6 @@
 """
 
-Converts 23AndMe to a quantstudio-ish format and handles some genotyping edge cases I need to make it work for my own
+Converts ancestry to a quantstudio-ish format and handles some genotyping edge cases I need to make it work for my own
 purposes
 
 """
@@ -8,7 +8,7 @@ purposes
 import sys
 import re
 
-raw = sys.argv[1]  # users raw 23AndMe download
+raw = sys.argv[1]  # users raw ancestry download
 gene_table = sys.argv[2] # an index of gene-rsid relations
 name = sys.argv[3] # the sample ID to assign 
 
@@ -150,7 +150,7 @@ C____904973_10	hCV904973	All	89.30%	10.70%	78.70%	21.30%	0%	0.868	0.352
 """
 
 
-# build a structure for 23AndMe
+# build a structure for ancestry
 def build(file):
     outDict = {}
     with open(file) as f:
@@ -160,16 +160,12 @@ def build(file):
                 continue
             else:
                 temp = line.split('\t')
-                vars = temp[3]
-                try:
-                    varsOut = vars[0] + "/" + vars[1]
-                except:
-                    varsOut = vars  # catches haploid calls (MT/Y) 
-                outDict[temp[0]] = varsOut
+                vars = temp[3]+'/'+temp[4]
+                outDict[temp[0]] = vars
     return outDict
 
 
-# search the 23AndMe data for the relevant markers 
+# search the ancestry data for the relevant markers 
 def search(search, seek):
     outDict = {}
     for key,value in seek.items():
@@ -179,53 +175,53 @@ def search(search, seek):
             outDict[rsid] = search[rsid]
         except:
             outDict[rsid] = "UND"
-        if outDict[rsid] == "-/-":
-            outDict[rsid] = "UND"  # catches null genotypes in 23andme data
+        if outDict[rsid] == "0/0":
+            outDict[rsid] = "UND"  # catches null genotypes in ancestry data
     return outDict
 
 
 # resolve edge cases
 def edges(raws):
     outDict = {}
-    #outDict["rs2069514"] = "UND" # an rsid not seen in this version of 23AndMe
-    #outDict["rs35694136"] = "UND" # an rsid not seen in this version of 23AndMe
-    #outDict["rs35599367"] = "UND" # an rsid not seen in this version of 23AndMe
-    #outDict["rs1799963"] = "UND" # an rsid not seen in this version of 23AndMe, this is actually almost fixed so maybe we can assign it anyways
-    #outDict["rs5030862"] = "UND" # an rsid not seen in this version of 23AndMe, probably could be fixed as T though due to freqs. UND for now because can't get CNV for CYP2D6 anyways.
+    #outDict["rs2069514"] = "UND" # an rsid not seen in this version of ancestry
+    #outDict["rs35694136"] = "UND" # an rsid not seen in this version of ancestry
+    #outDict["rs35599367"] = "UND" # an rsid not seen in this version of ancestry
+    #outDict["rs1799963"] = "UND" # an rsid not seen in this version of ancestry, this is actually almost fixed so maybe we can assign it anyways
+    #outDict["rs5030862"] = "UND" # an rsid not seen in this version of ancestry, probably could be fixed as T though due to freqs. UND for now because can't get CNV for CYP2D6 anyways.
     
     for key, value in raws.items():
         if key == "rs41303343":  # an insertion event
             if value == "I/I":
                 value = "T/T"
-            elif value == "D/I":
+            elif value == "D/I" or value == "I/D":
                 value = "-/T"
             elif value == "D/D":
                 value = "-/-"
         if key == "rs9332131":  # a deletion event
             if value == "I/I":
                 value = "A/A"
-            elif value == "D/I":
+            elif value == "D/I" or value == "I/D":
                 value = "-/A"
             elif value == "D/D":
                 value = "-/-"
         if key == "rs5030656":  # this needs to be updated to rs869035800, but functional consequence similar so swap it in for now
             if value == "I/I":
                 value = "TCT/TCT"
-            elif value == "D/I":
+            elif value == "D/I" or value == "I/D":
                 value = "-/TCT"
             elif value == "D/D":
                 value = "-/-"
-        if key == "rs35742686":  # this is a multiallelic loci that has relevant point or indel changes, 23AndMe seems to only consider indel
+        if key == "rs35742686":  # this is a multiallelic loci that has relevant point or indel changes, ancestry seems to only consider indel
             if value == "I/I":
                 value = "T/T"
-            elif value == "D/I":
+            elif value == "D/I" or value == "I/D":
                 value = "-/T"
             elif value == "D/D":
                 value = "-/-"
-        if key == "rs5030655":  # this is a multiallelic loci that has relevant point or indel changes, 23AndMe seems to only consider indel
+        if key == "rs5030655":  # this is a multiallelic loci that has relevant point or indel changes, ancestry seems to only consider indel
             if value == "I/I":
                 value = "A/A"
-            elif value == "D/I":
+            elif value == "D/I" or value == "I/D":
                 value = "-/A"
             elif value == "D/D":
                 value = "-/-"  
@@ -251,6 +247,7 @@ def convert(edged,genes):
 
 if __name__ == "__main__":
     genes = load_genes(gene_table)
+    print(genes)
     searcher = build(raw)
     raw_results = search(searcher, genes)
     print(raw_results)
